@@ -1,20 +1,20 @@
 {
-  "name": "Chrome GUI Environment",
+  "name": "Automa Chrome GUI",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": "."
   },
   "runArgs": [
     "--cap-add=SYS_ADMIN",
     "--ipc=host",
     "--shm-size=2g"
   ],
+  "forwardPorts": [6080, 9222],
   "customizations": {
     "vscode": {
-      "extensions": [
-        "dbaeumer.vscode-eslint"
-      ]
+      "extensions": ["dbaeumer.vscode-eslint"]
     }
   },
-  "forwardPorts": [6080],
-  "postCreateCommand": "echo 'Run: start-gui.sh to launch Chrome GUI'"
+  "overrideCommand": false,
+  "postStartCommand": "/usr/local/bin/start-gui.sh"
 }
