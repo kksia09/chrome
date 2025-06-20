@@ -13,10 +13,12 @@
   "forwardPorts": [6080, 9222],
   "portsAttributes": {
     "6080": {
-      "label": "noVNC GUI Access"
+      "label": "noVNC GUI Access",
+      "onAutoForward": "notify"
     },
     "9222": {
-      "label": "Chrome Remote Debugging"
+      "label": "Chrome Remote Debugging",
+      "onAutoForward": "notify"
     }
   },
   "customizations": {
@@ -26,6 +28,5 @@
       ]
     }
   },
-  "remoteUser": "root",
-  "postStartCommand": "/usr/local/bin/start-gui.sh"
+  "remoteUser": "root"
 }

@@ -1,10 +1,33 @@
 #!/bin/bash
 set -e
 
+# Cleanup function for graceful shutdown
+cleanup() {
+    echo "Shutting down gracefully..."
+    pkill -f "Xvfb|fluxbox|x11vnc|websockify|chrome" || true
+    # Clean up Chrome profiles
+    find /tmp -maxdepth 1 -name 'chrome-profile-*' -exec rm -rf {} + 2>/dev/null
+    exit 0
+}
+
+# Trap container exit signals
+trap cleanup SIGINT SIGTERM
+
 echo "Starting Automa GUI environment..."
+
+# Cleanup any residual Chrome profile locks
+echo "Cleaning up old Chrome profiles..."
+find /tmp -maxdepth 1 -name 'chrome-profile-*' -exec rm -rf {} + 2>/dev/null
 
 # Cleanup any existing X server locks
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99
+
+# Kill existing processes that might conflict
+pkill -9 Xvfb || true
+pkill -9 fluxbox || true
+pkill -9 x11vnc || true
+pkill -9 websockify || true
+pkill -9 chrome || true
 
 # Start virtual display
 echo "Starting Xvfb..."
@@ -24,8 +47,9 @@ echo "Xvfb started successfully on display :99"
 
 # Start DBUS
 echo "Starting DBUS..."
-dbus-launch --sh-syntax > /tmp/dbus-env
-source /tmp/dbus-env
+eval $(dbus-launch --sh-syntax)
+export DBUS_SESSION_BUS_ADDRESS
+export DBUS_SESSION_BUS_PID
 
 # Configure Fluxbox
 mkdir -p /root/.fluxbox
@@ -69,6 +93,11 @@ fi
 
 echo "Using Automa extension from: $AUTOMA_DIR"
 
+# Create UNIQUE Chrome user data directory
+CHROME_PROFILE_DIR="/tmp/chrome-profile-$(date +%s)"
+mkdir -p "$CHROME_PROFILE_DIR"
+echo "Using Chrome profile directory: $CHROME_PROFILE_DIR"
+
 # Start Chrome with Automa extension
 echo "Starting Chrome with Automa extension..."
 google-chrome-stable \
@@ -76,13 +105,16 @@ google-chrome-stable \
   --disable-gpu \
   --disable-dev-shm-usage \
   --disable-software-rasterizer \
+  --disable-features=UseOzonePlatform,VizDisplayCompositor \
   --window-size=1920,1080 \
   --start-maximized \
   --window-position=0,0 \
   --load-extension=$AUTOMA_DIR \
   --enable-extensions \
   --disable-web-security \
-  --disable-features=VizDisplayCompositor \
+  --user-data-dir="$CHROME_PROFILE_DIR" \
+  --no-first-run \
+  --no-default-browser-check \
   --enable-logging=stderr \
   --v=1 \
   --remote-debugging-port=9222 \
@@ -90,7 +122,7 @@ google-chrome-stable \
   >/tmp/chrome.log 2>&1 &
 
 # Wait for Chrome to start
-sleep 5
+sleep 8  # Increased sleep time for Chrome initialization
 
 # Check if Chrome started successfully
 if pgrep -f "google-chrome" > /dev/null; then
@@ -98,6 +130,16 @@ if pgrep -f "google-chrome" > /dev/null; then
 else
     echo "ERROR: Chrome failed to start. Check logs:"
     tail -20 /tmp/chrome.log
+    
+    # Attempt to capture Chrome exit code
+    CHROME_PID=$!
+    if wait $CHROME_PID; then
+        echo "Chrome exited with status $?"
+    else
+        echo "Chrome exited with status $?"
+    fi
+    
+    exit 1
 fi
 
 # Start xterm for debugging (optional)
@@ -112,6 +154,7 @@ echo "🔑 VNC Password: secret"
 echo "🔧 Chrome DevTools: http://localhost:9222"
 echo "=============================================="
 echo "📋 Extension loaded from: $AUTOMA_DIR"
+echo "📋 Chrome profile: $CHROME_PROFILE_DIR"
 echo "📝 Log files:"
 echo "   - Chrome: /tmp/chrome.log"
 echo "   - Xvfb: /tmp/xvfb.log"
