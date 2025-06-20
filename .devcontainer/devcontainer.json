@@ -1,5 +1,5 @@
 {
-  "name": "Automa Chrome GUI",
+  "name": "Automa Chrome GUI Environment",
   "build": {
     "dockerfile": "Dockerfile",
     "context": "."
@@ -7,14 +7,25 @@
   "runArgs": [
     "--cap-add=SYS_ADMIN",
     "--ipc=host",
-    "--shm-size=2g"
+    "--shm-size=2g",
+    "--security-opt=seccomp=unconfined"
   ],
   "forwardPorts": [6080, 9222],
-  "customizations": {
-    "vscode": {
-      "extensions": ["dbaeumer.vscode-eslint"]
+  "portsAttributes": {
+    "6080": {
+      "label": "noVNC GUI Access"
+    },
+    "9222": {
+      "label": "Chrome Remote Debugging"
     }
   },
-  "overrideCommand": false,
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  },
+  "remoteUser": "root",
   "postStartCommand": "/usr/local/bin/start-gui.sh"
 }
